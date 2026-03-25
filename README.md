@@ -6,6 +6,8 @@ Pensado para **equipas que documentam software** (READMEs, guias, notas): em vez
 
 [O que o projeto inclui](#o-que-o-projeto-inclui) · [O que está configurado](#o-que-está-configurado) · [Como usar](#como-usar) · [Requisitos](#requisitos) · [Instalação](#instalação) · [Supabase](#configuração-supabase) · [API HTTP](#api-http) · [Produção](#build-e-produção)
 
+<img width="1913" height="876" alt="image" src="https://github.com/user-attachments/assets/db82e9e8-35c6-4c01-bfd6-41dccd134290" />
+
 
 ---
 
