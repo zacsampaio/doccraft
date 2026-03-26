@@ -156,7 +156,7 @@ export default function Home() {
         setExportErrorDetail(
           typeof data.error === "string"
             ? data.error
-            : `Erro HTTP ${res.status}. Confira o terminal do Next.js.`
+            : "Não foi possível concluir o pedido. Tente novamente."
         );
         setExportStatus("error");
         return;

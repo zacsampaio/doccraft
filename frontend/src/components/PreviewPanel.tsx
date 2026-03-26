@@ -97,7 +97,7 @@ export function PreviewPanel({
           <p className="mt-2 text-xs text-red-700" role="alert">
             {exportErrorDetail?.trim()
               ? exportErrorDetail
-              : "Falha ao exportar. Confira Supabase/servidor e tente novamente."}
+              : "Não foi possível exportar o PDF. Tente novamente."}
           </p>
         )}
       </div>

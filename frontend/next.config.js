@@ -69,6 +69,11 @@ const securityHeaders = [
 
 const nextConfig = {
   outputFileTracingRoot: monorepoRoot,
+  serverExternalPackages: [
+    "@sparticuz/chromium",
+    "puppeteer-core",
+    "puppeteer",
+  ],
   transpilePackages: [
     "@marktype/markdown",
     "@marktype/templates",

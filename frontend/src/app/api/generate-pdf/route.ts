@@ -5,6 +5,7 @@ import { markdownToHtml } from "@/lib/markdown";
 import { isValidTemplate } from "@/lib/templates";
 import type { Template } from "@/lib/types";
 import { persistExportRecord, toDataUrl, uploadExportFile } from "@/lib/exports";
+import { userFacingPdfErrorMessage } from "@/lib/pdf-export-errors";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -15,21 +16,17 @@ const PDF_CONTENT_TIMEOUT_MS = 25_000;
 
 const MAX_INLINE_PDF_BYTES = 2_500_000;
 
-function isTimeoutLikeMessage(msg: string): boolean {
-  return /timeout|timed out|navigation timeout|net::err/i.test(msg);
-}
-
 async function renderPdfFromHtml(html: string): Promise<Buffer> {
   const isVercel = Boolean(process.env.VERCEL);
   if (isVercel) {
     const chromium = (await import("@sparticuz/chromium")).default;
     const puppeteerCore = await import("puppeteer-core");
     const executablePath = await chromium.executablePath();
+    // @sparticuz/chromium 137+ inclui --headless na lista `args`; usar headless: false no Puppeteer.
     const browser = await puppeteerCore.launch({
       args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
       executablePath,
-      headless: chromium.headless,
+      headless: false,
     });
     try {
       const page = await browser.newPage();
@@ -111,8 +108,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(
           {
             error:
-              "Upload no Supabase falhou e o PDF é grande demais para enviar sem Storage. Confirma SUPABASE_SERVICE_ROLE_KEY, o bucket «pdfs» e as migrations. Detalhe: " +
-              (errorMessage ?? "desconhecido"),
+              "O PDF ficou grande demais para enviar sem armazenamento configurado. Peça ao administrador para rever o Supabase (bucket e chave de serviço) ou use um documento mais curto.",
+            ...(process.env.MARKTYPE_DEBUG_PDF === "1"
+              ? { debug: errorMessage ?? "" }
+              : {}),
           },
           { status: 503 }
         );
@@ -139,29 +138,16 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url: publicUrl });
   } catch (err) {
-    console.error("[generate-pdf]", err);
     const raw =
-      err instanceof Error ? err.message : String(err ?? "PDF generation failed");
-    const debugPdf =
-      process.env.NODE_ENV === "development" ||
-      process.env.MARKTYPE_DEBUG_PDF === "1";
-    if (isTimeoutLikeMessage(raw)) {
-      return NextResponse.json(
-        {
-          error: debugPdf
-            ? raw
-            : "Timeout ao gerar o PDF. Reduz imagens externas no Markdown ou define PUPPETEER_EXECUTABLE_PATH se o Chromium embutido falhar.",
-        },
-        { status: 500 }
-      );
+      err instanceof Error ? err.message : String(err ?? "unknown");
+    console.error("[generate-pdf]", err);
+    const debugPdf = process.env.MARKTYPE_DEBUG_PDF === "1";
+    const body: { error: string; debug?: string } = {
+      error: userFacingPdfErrorMessage(raw),
+    };
+    if (debugPdf) {
+      body.debug = raw;
     }
-    return NextResponse.json(
-      {
-        error: debugPdf
-          ? raw
-          : "Falha ao gerar o PDF (Puppeteer/Chromium). Em dev vê o terminal do Next; ou MARKTYPE_DEBUG_PDF=1 para mensagem completa na API.",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json(body, { status: 500 });
   }
 }
