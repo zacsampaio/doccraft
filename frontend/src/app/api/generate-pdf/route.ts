@@ -6,6 +6,7 @@ import { isValidTemplate } from "@/lib/templates";
 import type { Template } from "@/lib/types";
 import { persistExportRecord, toDataUrl, uploadExportFile } from "@/lib/exports";
 import { userFacingPdfErrorMessage } from "@/lib/pdf-export-errors";
+import { resolveSparticuzChromiumBinDir } from "@/lib/resolve-sparticuz-chromium-bin";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -21,7 +22,8 @@ async function renderPdfFromHtml(html: string): Promise<Buffer> {
   if (isVercel) {
     const chromium = (await import("@sparticuz/chromium")).default;
     const puppeteerCore = await import("puppeteer-core");
-    const executablePath = await chromium.executablePath();
+    const chromiumBinDir = resolveSparticuzChromiumBinDir();
+    const executablePath = await chromium.executablePath(chromiumBinDir);
     // @sparticuz/chromium 137+ inclui --headless na lista `args`; usar headless: false no Puppeteer.
     const browser = await puppeteerCore.launch({
       args: chromium.args,

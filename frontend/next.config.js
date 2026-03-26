@@ -69,11 +69,20 @@ const securityHeaders = [
 
 const nextConfig = {
   outputFileTracingRoot: monorepoRoot,
-  serverExternalPackages: [
-    "@sparticuz/chromium",
-    "puppeteer-core",
-    "puppeteer",
-  ],
+  /**
+   * Sem isto, o trace do servidor não copia a pasta `bin` do @sparticuz/chromium
+   * (dezenas de MB, .br) e na Vercel aparece:
+   * "The input directory .../node_modules/@sparticuz/chromium/bin does not exist"
+   * Caminhos relativos ao diretório do Next (frontend/); no monorepo o pacote
+   * costuma estar hoisted na raiz do repo.
+   */
+  outputFileTracingIncludes: {
+    "/api/generate-pdf": [
+      "../node_modules/@sparticuz/chromium/**/*",
+      "./node_modules/@sparticuz/chromium/**/*",
+    ],
+  },
+  serverExternalPackages: ["puppeteer-core", "puppeteer"],
   transpilePackages: [
     "@marktype/markdown",
     "@marktype/templates",

@@ -31,6 +31,9 @@ function isResourceError(msg: string): boolean {
 }
 
 export function userFacingPdfErrorMessage(raw: string): string {
+  if (/brotli files|chromium\/bin|chromium bin ausente/i.test(raw)) {
+    return "O PDF não pôde ser preparado no servidor de alojamento. Volte a publicar a aplicação; se continuar, confirme que o projeto na Vercel usa a pasta «frontend» e instalação a partir da raiz do monorepo.";
+  }
   if (isTimeoutLikeMessage(raw)) {
     return "A geração do PDF demorou demais. Tente novamente; se o texto tiver muitas imagens ou ligações lentas, simplifique o conteúdo.";
   }
