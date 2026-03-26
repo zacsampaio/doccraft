@@ -25,6 +25,15 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@marktype/document-styles": [
+        "../packages/document-styles/src/index.ts"
+      ],
+      "@marktype/markdown": [
+        "../packages/markdown/src/index.ts"
+      ],
+      "@marktype/templates": [
+        "../packages/templates/src/index.ts"
       ]
     }
   },

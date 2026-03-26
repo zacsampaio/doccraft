@@ -266,18 +266,35 @@ function complianceBannerHtml(template: string): string {
   return `<div class="compliance-banner">Documento para fins de conformidade e auditoria — revisar controles internos aplicáveis.</div>`;
 }
 
+export type BuildStyledDocumentOptions = {
+  /**
+   * Quando true (recomendado no servidor/Puppeteer), não carrega Google Fonts
+   * por rede — evita timeouts se fonts.googleapis.com estiver lento ou bloqueado.
+   * O CSS já define fallbacks (system-ui, Georgia, etc.).
+   */
+  skipRemoteFonts?: boolean;
+};
+
 /** Full HTML document for Puppeteer / print / data-URL fallback. */
-export function buildStyledDocumentHtml(html: string, template: string): string {
+export function buildStyledDocumentHtml(
+  html: string,
+  template: string,
+  options?: BuildStyledDocumentOptions
+): string {
   const css = templateSpecificCss(template);
   const banner = complianceBannerHtml(template);
+  const skipFonts = options?.skipRemoteFonts === true;
+  const fontLinks = skipFonts
+    ? ""
+    : `<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="${FONTS}" rel="stylesheet"/>`;
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="${FONTS}" rel="stylesheet"/>
+${fontLinks}
 <style>
 ${baseRules()}
 ${css}

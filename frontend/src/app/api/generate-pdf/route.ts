@@ -9,11 +9,15 @@ import { persistExportRecord, toDataUrl, uploadExportFile } from "@/lib/exports"
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-/** Evita timeouts quando há imagens externas lentas ou ligações que nunca ficam «idle». */
-const PDF_CONTENT_WAIT: "load" = "load";
-const PDF_CONTENT_TIMEOUT_MS = 45_000;
+/** Não esperar rede (fontes, imagens no HTML); só o DOM pronto. */
+const PDF_CONTENT_WAIT: "domcontentloaded" = "domcontentloaded";
+const PDF_CONTENT_TIMEOUT_MS = 25_000;
 
 const MAX_INLINE_PDF_BYTES = 2_500_000;
+
+function isTimeoutLikeMessage(msg: string): boolean {
+  return /timeout|timed out|navigation timeout|net::err/i.test(msg);
+}
 
 async function renderPdfFromHtml(html: string): Promise<Buffer> {
   const isVercel = Boolean(process.env.VERCEL);
@@ -45,12 +49,15 @@ async function renderPdfFromHtml(html: string): Promise<Buffer> {
   }
 
   const puppeteer = await import("puppeteer");
+  const chromePath = process.env.PUPPETEER_EXECUTABLE_PATH?.trim();
   const browser = await puppeteer.default.launch({
     headless: true,
+    ...(chromePath ? { executablePath: chromePath } : {}),
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
+      "--disable-gpu",
     ],
   });
   try {
@@ -87,7 +94,9 @@ export async function POST(req: NextRequest) {
 
     const template = rawTemplate as Template;
     const html = markdownToHtml(markdown);
-    const fullHtml = buildStyledDocumentHtml(html, template);
+    const fullHtml = buildStyledDocumentHtml(html, template, {
+      skipRemoteFonts: true,
+    });
     const pdfBuffer = await renderPdfFromHtml(fullHtml);
     const filename = `docs/${Date.now()}-${template}.pdf`;
     const { publicUrl, errorMessage } = await uploadExportFile(
@@ -131,10 +140,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url: publicUrl });
   } catch (err) {
     console.error("[generate-pdf]", err);
-    const message =
-      err instanceof Error ? err.message : "PDF generation failed";
+    const raw =
+      err instanceof Error ? err.message : String(err ?? "PDF generation failed");
+    const debugPdf =
+      process.env.NODE_ENV === "development" ||
+      process.env.MARKTYPE_DEBUG_PDF === "1";
+    if (isTimeoutLikeMessage(raw)) {
+      return NextResponse.json(
+        {
+          error: debugPdf
+            ? raw
+            : "Timeout ao gerar o PDF. Reduz imagens externas no Markdown ou define PUPPETEER_EXECUTABLE_PATH se o Chromium embutido falhar.",
+        },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
-      { error: message.includes("Timeout") ? "Timeout ao gerar o PDF (conteúdo ou rede). Tenta reduzir imagens externas." : "PDF generation failed" },
+      {
+        error: debugPdf
+          ? raw
+          : "Falha ao gerar o PDF (Puppeteer/Chromium). Em dev vê o terminal do Next; ou MARKTYPE_DEBUG_PDF=1 para mensagem completa na API.",
+      },
       { status: 500 }
     );
   }

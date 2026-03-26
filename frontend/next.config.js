@@ -1,3 +1,8 @@
+const path = require("path");
+
+/** Raiz do monorepo (frontend fica em ./frontend) */
+const monorepoRoot = path.resolve(__dirname, "..");
+
 /** @type {import('next').NextConfig} */
 function buildContentSecurityPolicy() {
   const isProd = process.env.NODE_ENV === "production";
@@ -63,11 +68,41 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  outputFileTracingRoot: monorepoRoot,
   transpilePackages: [
     "@marktype/markdown",
     "@marktype/templates",
     "@marktype/document-styles",
   ],
+  // Turbopack no Windows ainda falha com caminhos absolutos (C:\...) nos aliases.
+  // Usar caminhos relativos ao diretório deste next.config (frontend/).
+  turbopack: {
+    resolveAlias: {
+      "@marktype/document-styles": "../packages/document-styles/src/index.ts",
+      "@marktype/markdown": "../packages/markdown/src/index.ts",
+      "@marktype/templates": "../packages/templates/src/index.ts",
+    },
+  },
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...(typeof config.resolve.alias === "object" && config.resolve.alias
+        ? config.resolve.alias
+        : {}),
+      "@marktype/document-styles": path.join(
+        monorepoRoot,
+        "packages/document-styles/src/index.ts"
+      ),
+      "@marktype/markdown": path.join(
+        monorepoRoot,
+        "packages/markdown/src/index.ts"
+      ),
+      "@marktype/templates": path.join(
+        monorepoRoot,
+        "packages/templates/src/index.ts"
+      ),
+    };
+    return config;
+  },
   async headers() {
     const headersForEnv =
       process.env.NODE_ENV === "production"
